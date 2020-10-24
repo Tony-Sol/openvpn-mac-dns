@@ -7,6 +7,7 @@
 
 # Parses DHCP options from openvpn to update resolv.conf
 # To use set as 'up' and 'down' script in your openvpn *.conf:
+# script-security 2
 # up /etc/openvpn/update-resolv-conf
 # down /etc/openvpn/update-resolv-conf
 
@@ -22,53 +23,56 @@ IFS=$'\n' read -d '' -ra adapters < <(networksetup -listallnetworkservices |grep
 
 split_into_parts()
 {
-        part1="$1"
-        part2="$2"
-        part3="$3"
+    part1="$1"
+    part2="$2"
+    part3="$3"
 }
 
 update_all_dns()
 {
-        for adapter in "${adapters[@]}"
-        do
+    for adapter in "${adapters[@]}"
+    do
         echo updating dns for $adapter
         # set dns server to the vpn dns server
-        if [[ "${SRCHS[@]}" ]]; then
-			networksetup -setsearchdomains "$adapter" "${SRCHS[@]}"
+        if [[ "${SRCHS[@]}" ]] ; then
+            # echo "$adapter" "${SRCHS[@]}"
+            networksetup -setsearchdomains "$adapter" "${SRCHS[@]}"
         fi
-        if [[ "${NMSRVRS[@]}" ]]; then
-			networksetup -setdnsservers "$adapter" "${NMSRVRS[@]}"
-		fi
-        done
+        if [[ "${NMSRVRS[@]}" ]] ; then
+            # echo "$adapter" "${NMSRVRS[@]}"
+            networksetup -setdnsservers "$adapter" "${NMSRVRS[@]}"
+        fi
+    done
 }
 
 clear_all_dns()
 {
-        for adapter in "${adapters[@]}"
-        do
+    for adapter in "${adapters[@]}"
+    do
         echo updating dns for $adapter
         networksetup -setdnsservers "$adapter" empty
         networksetup -setsearchdomains "$adapter" empty
-        done
+    done
 }
 
 case "$script_type" in
   up)
-        for optionvarname in ${!foreign_option_*} ; do
-                option="${!optionvarname}"
-                echo "$option"
-                split_into_parts $option
-                if [ "$part1" = "dhcp-option" ] ; then
-                        if [ "$part2" = "DNS" ] ; then
-                                NMSRVRS=(${NMSRVRS[@]} $part3)
-                        elif [ "$part2" = "DOMAIN" ] ; then
-                                SRCHS=(${SRCHS[@]} $part3)
-                        fi
-                fi
-        done
-        update_all_dns
-        ;;
+    for optionvarname in ${!foreign_option_*}
+    do
+        option="${!optionvarname}"
+        echo "$option"
+        split_into_parts $option
+        if [ "$part1" = "dhcp-option" ] ; then
+            if [ "$part2" = "DNS" ] ; then
+                NMSRVRS=(${NMSRVRS[@]} $part3)
+            elif [ "$part2" = "DOMAIN" ] ; then
+                SRCHS=(${SRCHS[@]} $part3)
+            fi
+        fi
+    done
+    update_all_dns
+    ;;
   down)
-        clear_all_dns
-        ;;
+    clear_all_dns
+    ;;
 esac
